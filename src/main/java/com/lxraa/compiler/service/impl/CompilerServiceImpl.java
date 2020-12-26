@@ -78,19 +78,13 @@ public class CompilerServiceImpl implements CompilerService {
         throw new Exception("unknown token");
     }
 
-    @Override
-    public Map<String,Set<String>> getFirstSet(Grammer grammer) {
+    private Set<String> getTerminal(Grammer grammer){
         Set<String> terminal = new HashSet<>();
-        Set<String> nonTerminal = new HashSet<>();
-        Map<String, Set<String>> sentences = grammer.getSentences();
-        // 遍历句子，得到终结符集合和非终结符集合
+        Map<String,Set<String>> sentences = grammer.getSentences();
         for(String k : sentences.keySet()){
             for(int i = 0;i < k.length();i++){
                 if(Grammer.isTerminal(k.charAt(i))){
                     terminal.add(k.substring(i,i+1));
-                }
-                if(Grammer.isNonTerminal(k.charAt(i))){
-                    nonTerminal.add(k.substring(i,i+1));
                 }
             }
             Set<String> vs = sentences.get(k);
@@ -99,13 +93,39 @@ public class CompilerServiceImpl implements CompilerService {
                     if(Grammer.isTerminal(v.charAt(i))){
                         terminal.add(v.substring(i,i+1));
                     }
+                }
+            }
+        }
+        return terminal;
+    }
+
+    private Set<String> getNonTerminal(Grammer grammer){
+        Set<String> nonTerminal = new HashSet<>();
+        Map<String,Set<String>> sentences = grammer.getSentences();
+        for(String k : sentences.keySet()){
+            for(int i = 0;i < k.length();i++){
+                if(Grammer.isNonTerminal(k.charAt(i))){
+                    nonTerminal.add(k.substring(i,i+1));
+                }
+            }
+            Set<String> vs = sentences.get(k);
+            for(String v : vs){
+                for(int i = 0;i < v.length();i++){
                     if(Grammer.isNonTerminal(v.charAt(i))){
                         nonTerminal.add(v.substring(i,i+1));
                     }
                 }
             }
-
         }
+        return nonTerminal;
+    }
+
+    @Override
+    public Map<String,Set<String>> getFirstSet(Grammer grammer) {
+        Set<String> terminal = getTerminal(grammer);
+        Set<String> nonTerminal = getNonTerminal(grammer);
+        Map<String, Set<String>> sentences = grammer.getSentences();
+
         Map<String,Set<String>> first = new HashMap<>();
         // 初始化first集
         initFirst(first,nonTerminal,terminal);
@@ -130,5 +150,28 @@ public class CompilerServiceImpl implements CompilerService {
         }
 
         return first;
+    }
+
+    /**
+     * 初始化follow集
+     * @param follow
+     * @param terminal
+     * @param nonTerminal
+     */
+    private void initFollow(Map<String,Set<String>> follow,Set<String> terminal,Set<String> nonTerminal){
+        for(String token : nonTerminal){
+            follow.put(token,new HashSet<>());
+        }
+    }
+
+    /**
+     * 计算文法的follow集
+     * @param grammer
+     * @return
+     */
+    @Override
+    public Map<String, Set<String>> getFollowSet(Grammer grammer) {
+        Map<String,Set<String>> follow = new HashMap<>();
+        return null;
     }
 }
