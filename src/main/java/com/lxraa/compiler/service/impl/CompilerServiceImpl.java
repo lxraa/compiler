@@ -2,6 +2,7 @@ package com.lxraa.compiler.service.impl;
 
 import com.lxraa.compiler.domain.Grammer;
 import com.lxraa.compiler.service.CompilerService;
+import org.springframework.beans.factory.config.MapFactoryBean;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
@@ -161,7 +162,46 @@ public class CompilerServiceImpl implements CompilerService {
     private void initFollow(Map<String,Set<String>> follow,Set<String> terminal,Set<String> nonTerminal){
         for(String token : nonTerminal){
             follow.put(token,new HashSet<>());
+            if(Grammer.START == token){
+                follow.get(token).add(Grammer.END);
+            }
         }
+    }
+
+    private Boolean updateFollowBySentence(Map<String,Set<String>> follow, String left, String right, Map<String,Set<String>> first){
+        //左部最后一个字符
+        String leftToken = left.substring(left.length() - 1);
+        //右部最后一个字符
+        String lastToken = right.substring(right.length() - 1);
+        Boolean isChange = false;
+        for(int i = 0;i < right.length() - 1;i++){
+            String objToken = right.substring(i,i+1);
+            String nextToken = right.substring(i+1,i+2);
+            // 终结符没有follow集
+            if(Grammer.isTerminal(objToken)){
+                continue;
+            }
+            if(Grammer.isNonTerminal(objToken)){
+                // 此处nextToken不可能为Grammer.NULL，应在化简文法时就考虑这种情况
+                if(Grammer.isTerminal(nextToken)){
+                    follow.get(objToken).add(nextToken);
+                    isChange = isChange || true;
+                    continue;
+                }
+                // 若token的下一个字符为非终结符，则
+                if(Grammer.isNonTerminal(nextToken)){
+                    isChange = isChange || union(follow.get(objToken),first.get(nextToken),true);
+                    if(follow.get(objToken).contains(Grammer.NULL)){
+                        isChange = isChange || updateFollowBySentence(follow,left,right.substring(0,i) + right.substring(i+1),first);
+                    }
+                    continue;
+                }
+            }
+        }
+        //处理最后一个字符
+        isChange = isChange || union(follow.get(lastToken),follow.get(leftToken),true);
+        return isChange;
+
     }
 
     /**
@@ -172,6 +212,23 @@ public class CompilerServiceImpl implements CompilerService {
     @Override
     public Map<String, Set<String>> getFollowSet(Grammer grammer) {
         Map<String,Set<String>> follow = new HashMap<>();
+        Set<String> terminal = getTerminal(grammer);
+        Set<String> nonTerminal = getNonTerminal(grammer);
+        Map<String,Set<String>> first = this.getFirstSet(grammer);
+
+        Map<String,Set<String>> sentences = grammer.getSentences();
+        Boolean isChange = false;
+        while(true){
+            for(String k : sentences.keySet()){
+                for(String v: sentences.get(k)){
+                    isChange = isChange || updateFollowBySentence(follow,k,v,first);
+                }
+            }
+            if(!isChange){
+                break;
+            }
+        }
+
         return null;
     }
 }

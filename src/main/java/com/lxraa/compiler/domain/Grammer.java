@@ -9,8 +9,8 @@ public class Grammer {
     private Map<String, Set<String>> sentences = new HashMap<>();
     // 空
     public static String NULL = "ε";
-
-
+    public static String END = "$";
+    public static String START = "S";
 
     /**
      * 给文法添加句子
