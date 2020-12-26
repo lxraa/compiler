@@ -55,7 +55,14 @@ public class Grammer {
     }
 
     public static Boolean isTerminal(char token){
-        return Character.isLowerCase(token) || NULL.charAt(0) == token;
+        char[] terminal = new char[]{'+','*','(',')','^'};
+        Boolean f = false;
+        for(char t:terminal){
+            if(t == token){
+                f = true;
+            }
+        }
+        return Character.isLowerCase(token) || NULL.charAt(0) == token || f;
     }
 
     public static Boolean isNonTerminal(char token){
