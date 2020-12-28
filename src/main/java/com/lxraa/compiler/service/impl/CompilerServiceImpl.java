@@ -184,8 +184,7 @@ public class CompilerServiceImpl implements CompilerService {
             if(Grammer.isNonTerminal(objToken)){
                 // 此处nextToken不可能为Grammer.NULL，应在化简文法时就考虑这种情况
                 if(Grammer.isTerminal(nextToken)){
-                    follow.get(objToken).add(nextToken);
-                    isChange = isChange || true;
+                    isChange = isChange || follow.get(objToken).add(nextToken);
                     continue;
                 }
                 // 若token的下一个字符为非终结符，则
@@ -199,6 +198,9 @@ public class CompilerServiceImpl implements CompilerService {
             }
         }
         //处理最后一个字符
+        if(Grammer.isTerminal(lastToken)){
+            return isChange;
+        }
         isChange = isChange || union(follow.get(lastToken),follow.get(leftToken),true);
         return isChange;
 
@@ -217,8 +219,10 @@ public class CompilerServiceImpl implements CompilerService {
         Map<String,Set<String>> first = this.getFirstSet(grammer);
 
         Map<String,Set<String>> sentences = grammer.getSentences();
-        Boolean isChange = false;
+
+        initFollow(follow,terminal,nonTerminal);
         while(true){
+            Boolean isChange = false;
             for(String k : sentences.keySet()){
                 for(String v: sentences.get(k)){
                     isChange = isChange || updateFollowBySentence(follow,k,v,first);
@@ -229,6 +233,6 @@ public class CompilerServiceImpl implements CompilerService {
             }
         }
 
-        return null;
+        return follow;
     }
 }

@@ -42,7 +42,8 @@ public class Grammer {
      * @return
      */
     public static Boolean isTerminal(String token){
-        return Character.isLowerCase(token.charAt(0)) || token.equals(NULL);
+        char c = token.charAt(0);
+        return isTerminal(c);
     }
 
     /**
@@ -51,7 +52,7 @@ public class Grammer {
      * @return
      */
     public static Boolean isNonTerminal(String token){
-        return Character.isUpperCase(token.charAt(0));
+        return isNonTerminal(token.charAt(0));
     }
 
     public static Boolean isTerminal(char token){
