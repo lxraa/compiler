@@ -2,7 +2,6 @@ package com.lxraa.compiler.service.impl;
 
 import com.lxraa.compiler.domain.Grammer;
 import com.lxraa.compiler.service.CompilerService;
-import org.springframework.beans.factory.config.MapFactoryBean;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
@@ -159,49 +158,85 @@ public class CompilerServiceImpl implements CompilerService {
      * @param terminal
      * @param nonTerminal
      */
-    private void initFollow(Map<String,Set<String>> follow,Set<String> terminal,Set<String> nonTerminal){
+    private void initFollow(Map<String,Set<String>> follow,Set<String> terminal,Set<String> nonTerminal,Grammer grammer){
         for(String token : nonTerminal){
             follow.put(token,new HashSet<>());
-            if(Grammer.START == token){
+            if(grammer.START == token){
                 follow.get(token).add(Grammer.END);
             }
         }
     }
 
+    private Set<String> getStrFirst(String s,Map<String,Set<String>> first){
+        if(s.length() == 0){
+            Set<String> tmpR = new HashSet<>();
+            tmpR.add(Grammer.NULL);
+            return tmpR;
+        }
+        String token = s.substring(0,1);
+        Set<String> r = new HashSet<>();
+        union(r, first.get(token),true);
+        if(first.get(token).contains(Grammer.NULL)){
+            union(r,getStrFirst(s.substring(1),first),true);
+        }
+        return r;
+    }
+
+    /**
+     * 二型文法的左部必为一个非终结符
+     * @param follow
+     * @param left
+     * @param right
+     * @param first
+     * @return
+     */
     private Boolean updateFollowBySentence(Map<String,Set<String>> follow, String left, String right, Map<String,Set<String>> first){
-        //左部最后一个字符
-        String leftToken = left.substring(left.length() - 1);
+
         //右部最后一个字符
         String lastToken = right.substring(right.length() - 1);
         Boolean isChange = false;
         for(int i = 0;i < right.length() - 1;i++){
             String objToken = right.substring(i,i+1);
-            String nextToken = right.substring(i+1,i+2);
             // 终结符没有follow集
             if(Grammer.isTerminal(objToken)){
                 continue;
             }
             if(Grammer.isNonTerminal(objToken)){
+                String rightStr = right.substring(i+1);
+                Set<String> tmpFirst = getStrFirst(rightStr,first);
+                Boolean canBeNull = true;
+                for(int j = 0;j <rightStr.length();j++){
+                    canBeNull = canBeNull && first.get(rightStr.substring(j,j+1)).contains(Grammer.NULL);
+                }
+                if(canBeNull){
+                    tmpFirst.add(Grammer.NULL);
+                }
+
+                isChange = isChange || union(follow.get(objToken),tmpFirst,true);
+                if(tmpFirst.contains(Grammer.NULL)){
+                    isChange = isChange || union(follow.get(objToken),follow.get(left),true);
+                }
                 // 此处nextToken不可能为Grammer.NULL，应在化简文法时就考虑这种情况
-                if(Grammer.isTerminal(nextToken)){
-                    isChange = isChange || follow.get(objToken).add(nextToken);
-                    continue;
-                }
-                // 若token的下一个字符为非终结符，则
-                if(Grammer.isNonTerminal(nextToken)){
-                    isChange = isChange || union(follow.get(objToken),first.get(nextToken),true);
-                    if(follow.get(objToken).contains(Grammer.NULL)){
-                        isChange = isChange || updateFollowBySentence(follow,left,right.substring(0,i) + right.substring(i+1),first);
-                    }
-                    continue;
-                }
+//                if(Grammer.isTerminal(nextToken)){
+//                    isChange = isChange || follow.get(objToken).add(nextToken);
+//                    continue;
+//                }
+//                // 若token的下一个字符为非终结符，则
+//                if(Grammer.isNonTerminal(nextToken)){
+//                    isChange = isChange || union(follow.get(objToken),first.get(nextToken),true);
+//                    if(follow.get(objToken).contains(Grammer.NULL)){
+//                        isChange = isChange || updateFollowBySentence(follow,left,right.substring(0,i) + right.substring(i+1),first);
+//                    }
+//                    continue;
+//                }
+//                isChange = isChange || union(follow.get(objToken),first.get(nextToken),true);
             }
         }
         //处理最后一个字符
         if(Grammer.isTerminal(lastToken)){
             return isChange;
         }
-        isChange = isChange || union(follow.get(lastToken),follow.get(leftToken),true);
+        isChange = isChange || union(follow.get(lastToken),follow.get(left),true);
         return isChange;
 
     }
@@ -220,7 +255,7 @@ public class CompilerServiceImpl implements CompilerService {
 
         Map<String,Set<String>> sentences = grammer.getSentences();
 
-        initFollow(follow,terminal,nonTerminal);
+        initFollow(follow,terminal,nonTerminal,grammer);
         while(true){
             Boolean isChange = false;
             for(String k : sentences.keySet()){
@@ -235,4 +270,65 @@ public class CompilerServiceImpl implements CompilerService {
 
         return follow;
     }
+
+//    private void initEmpty(Map<String,Boolean> empty,Set<String> terminal,Set<String> nonTerminal,Grammer grammer){
+//        for(String token : terminal){
+//            if(Grammer.NULL.equals(token)){
+//                empty.put(token,true);
+//                continue;
+//            }
+//            empty.put(token,false);
+//        }
+//
+//        for(String token : nonTerminal){
+//            empty.put(token,false);
+//        }
+//    }
+
+//    private Boolean updateEmptyBySentence(Map<String,Boolean> empty,String left,String right){
+//        Boolean isChange = false;
+//        if(Grammer.isNonTerminal(left)){
+//            Boolean f = false;
+//            for(int i = 0;i < right.length();i++){
+//                String obj = right.substring(i,i+1);
+//                f = f && empty.get(obj);
+//            }
+//
+//            isChange = isChange || (empty.get(left) ^ f);
+//            empty.replace(left,f);
+//        }
+//
+//        return isChange;
+//    }
+//
+//    @Override
+//    public Map<String, Boolean> getEmpty(Grammer grammer) {
+//        Set<String> nonTerminal = getNonTerminal(grammer);
+//        Set<String> terminal = getTerminal(grammer);
+//
+//        Map<String,Boolean> empty = new HashMap<>();
+//        initEmpty(empty,terminal,nonTerminal,grammer);
+//
+//        while(true){
+//            Boolean isChange = false;
+//            Map<String,Set<String>> sentences = grammer.getSentences();
+//            for(String left : sentences.keySet()){
+//                for(String right:sentences.get(left)){
+//                    isChange = isChange || updateEmptyBySentence(empty,left,right);
+//
+//                }
+//            }
+//            if(!isChange){
+//                break;
+//            }
+//        }
+//
+//        return empty;
+//    }
+
+    @Override
+    public Boolean antlr(){
+        return true;
+    }
+
 }

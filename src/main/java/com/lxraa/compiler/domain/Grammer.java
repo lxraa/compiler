@@ -10,7 +10,11 @@ public class Grammer {
     // 空
     public static String NULL = "ε";
     public static String END = "$";
-    public static String START = "S";
+    public String START = "S";
+
+    public void setStart(String start){
+        this.START = start;
+    }
 
     /**
      * 给文法添加句子

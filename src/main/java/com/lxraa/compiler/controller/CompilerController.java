@@ -49,28 +49,23 @@ public class CompilerController {
         // D→c
         grammer.addSentence("D","c");
 
-//        //E->TE'
-//        grammer.addSentence("E","TG");
-//        //E'->+E|ε
-//        grammer.addSentence("G","+E");
-//        grammer.addSentence("G","ε");
-//        //T->FT'
-//        grammer.addSentence("T","FH");
-//        //T'->T|ε
-//        grammer.addSentence("H","T");
-//        grammer.addSentence("H","ε");
-//        //F->PF'
-//        grammer.addSentence("F","PH");
-//        //F'->*F'|ε
-//        grammer.addSentence("H","*H");
-//        grammer.addSentence("H","ε");
-//        //P->(E)|a|b|^
-//        grammer.addSentence("P","(E)");
-//        grammer.addSentence("P","a");
-//        grammer.addSentence("P","b");
-//        grammer.addSentence("P","^");
+        Grammer grammer2 = new Grammer();
+        grammer2.setStart("E");
+        // E→TE’    E'= D
+        grammer2.addSentence("E","TD");
+        // E’→+TE’ | ε   E' = D
+        grammer2.addSentence("D","+TD");
+        grammer2.addSentence("D","ε");
+        // T→FT’  T'= Y
+        grammer2.addSentence("T","FY");
+        // T’→*FT’ | ε  T' = Y
+        grammer2.addSentence("Y","*FY");
+        grammer2.addSentence("Y","ε");
+        // F→（E）| id id = i
+        grammer2.addSentence("F","(E)");
+        grammer2.addSentence("F","i");
 
-        Map<String, Set<String>> first = compilerService.getFirstSet(grammer);
+        Map<String, Set<String>> first = compilerService.getFirstSet(grammer2);
         return new ResponseEntity<Object>(first,HttpStatus.OK);
     }
 
@@ -100,6 +95,7 @@ public class CompilerController {
 
 
         Grammer grammer2 = new Grammer();
+        grammer2.setStart("E");
         // E→TE’    E'= D
         grammer2.addSentence("E","TD");
         // E’→+TE’ | ε   E' = D
@@ -117,5 +113,13 @@ public class CompilerController {
 
         Map<String,Set<String>> follow = compilerService.getFollowSet(grammer2);
         return new ResponseEntity<Object>(follow,HttpStatus.OK);
+    }
+
+
+    @GetMapping("/antlr")
+    public ResponseEntity<Object> antlr(){
+
+
+        return new ResponseEntity<>(compilerService.antlr(),HttpStatus.OK);
     }
 }
