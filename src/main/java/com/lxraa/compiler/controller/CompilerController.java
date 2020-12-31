@@ -5,6 +5,8 @@ import com.lxraa.compiler.service.CompilerService;
 import com.lxraa.compiler.service.impl.CompilerServiceImpl;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.annotation.Secured;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -69,6 +71,7 @@ public class CompilerController {
         return new ResponseEntity<Object>(first,HttpStatus.OK);
     }
 
+    @PreAuthorize("hasAuthority('admin')")
     @GetMapping("/getFollow")
     public ResponseEntity<Object> getFollow(){
 //        Grammer grammer = new Grammer();
