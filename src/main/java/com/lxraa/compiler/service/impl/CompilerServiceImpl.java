@@ -1,9 +1,16 @@
 package com.lxraa.compiler.service.impl;
 
+import com.lxraa.compiler.antlr.Java8Parser;
 import com.lxraa.compiler.domain.Grammer;
+import com.lxraa.compiler.antlr.Java8Lexer;
 import com.lxraa.compiler.service.CompilerService;
+import org.antlr.v4.runtime.*;
 import org.springframework.stereotype.Service;
 
+import java.io.File;
+import java.io.IOException;
+import java.nio.charset.Charset;
+import java.nio.file.Files;
 import java.util.*;
 
 @Service
@@ -22,7 +29,7 @@ public class CompilerServiceImpl implements CompilerService {
             if(flag && token.equals(Grammer.NULL)){
                 continue;
             }
-            isChange = isChange || set1.add(token);
+            isChange = set1.add(token) || isChange;
         }
         return isChange;
     }
@@ -62,16 +69,16 @@ public class CompilerServiceImpl implements CompilerService {
         String objToken = left.substring(0,1);
         // 若右部第一个元素为终结符
         if(Grammer.isTerminal(right.charAt(0))){
-            isChange = isChange || first.get(objToken).add(right.substring(0,1));
+            isChange = first.get(objToken).add(right.substring(0,1)) || isChange;
             return isChange;
         }
         // 若右部第一个元素为非终结符
         if(Grammer.isNonTerminal(right.charAt(0))){
             // 获取右部第一个非终结符的first集
             Set<String> ts = first.get(right.substring(0,1));
-            isChange = isChange || union(first.get(objToken),ts,true);
+            isChange = union(first.get(objToken),ts,true) || isChange;
             if(ts.contains(Grammer.NULL)){
-                return isChange || updateFirstBySentence(first,left,right.substring(1));
+                return updateFirstBySentence(first,left,right.substring(1)) || isChange;
             }
             return isChange;
         }
@@ -120,6 +127,11 @@ public class CompilerServiceImpl implements CompilerService {
         return nonTerminal;
     }
 
+    /**
+     * 求first集，first集的key是终结符或非终结符，value为终结符的set
+     * @param grammer
+     * @return
+     */
     @Override
     public Map<String,Set<String>> getFirstSet(Grammer grammer) {
         Set<String> terminal = getTerminal(grammer);
@@ -137,7 +149,7 @@ public class CompilerServiceImpl implements CompilerService {
                 for(String right : sentences.get(left)){
                     //left->right
                     try{
-                        isChange = isChange || updateFirstBySentence(first,left,right);
+                        isChange = updateFirstBySentence(first,left,right) || isChange;
                     }catch (Exception e){
                         e.printStackTrace();
                         return null;
@@ -168,7 +180,7 @@ public class CompilerServiceImpl implements CompilerService {
     }
 
     private Set<String> getStrFirst(String s,Map<String,Set<String>> first){
-        if(s.length() == 0){
+        if(s.length() == 0 || Grammer.NULL.equals(s)){
             Set<String> tmpR = new HashSet<>();
             tmpR.add(Grammer.NULL);
             return tmpR;
@@ -212,9 +224,9 @@ public class CompilerServiceImpl implements CompilerService {
                     tmpFirst.add(Grammer.NULL);
                 }
 
-                isChange = isChange || union(follow.get(objToken),tmpFirst,true);
+                isChange = union(follow.get(objToken),tmpFirst,true) || isChange;
                 if(tmpFirst.contains(Grammer.NULL)){
-                    isChange = isChange || union(follow.get(objToken),follow.get(left),true);
+                    isChange = union(follow.get(objToken),follow.get(left),true) || isChange;
                 }
                 // 此处nextToken不可能为Grammer.NULL，应在化简文法时就考虑这种情况
 //                if(Grammer.isTerminal(nextToken)){
@@ -236,13 +248,13 @@ public class CompilerServiceImpl implements CompilerService {
         if(Grammer.isTerminal(lastToken)){
             return isChange;
         }
-        isChange = isChange || union(follow.get(lastToken),follow.get(left),true);
+        isChange = union(follow.get(lastToken),follow.get(left),true) || isChange;
         return isChange;
 
     }
 
     /**
-     * 计算文法的follow集
+     * 计算文法的follow集。follow集的key为非终结符，value为终结符set或文法的结束符号
      * @param grammer
      * @return
      */
@@ -260,7 +272,7 @@ public class CompilerServiceImpl implements CompilerService {
             Boolean isChange = false;
             for(String k : sentences.keySet()){
                 for(String v: sentences.get(k)){
-                    isChange = isChange || updateFollowBySentence(follow,k,v,first);
+                    isChange = updateFollowBySentence(follow,k,v,first) || isChange;
                 }
             }
             if(!isChange){
@@ -269,6 +281,49 @@ public class CompilerServiceImpl implements CompilerService {
         }
 
         return follow;
+    }
+
+    private void initSelect(Map<List<String>,Set<String>> select,Map<String,Set<String>> first,Map<String,Set<String>> follow,Grammer grammer){
+        Map<String,Set<String>> sentences = grammer.getSentences();
+        // 一个产生式的选择符号集SELECT。给定上下文无关文法的产生式A→α,A∈VN,α∈V∗
+        for(String left : sentences.keySet()){
+            for(String right: sentences.get(left)){
+                List<String> k = new ArrayList<>();
+                k.add(left);
+                k.add(right);
+                Set<String> v = new HashSet<>();
+                select.put(k,v);
+
+                Set<String> rightFirstSet = getStrFirst(right,first);
+
+                if(rightFirstSet.contains(Grammer.NULL)){
+                    //如果α⇒∗ε，则SELECT(A→α)=(FIRST(α)−{ε})⋃FOLLOW(A)
+                    union(v,rightFirstSet,true);
+                    union(v,follow.get(left),true);
+                }else{
+                    // 若α⇏∗ε，则SELECT(A→α)=FIRST(α)。
+                    union(v,rightFirstSet,true);
+                }
+            }
+        }
+    }
+
+    /**
+     * select集是相对于产生式的概念，用来计算遇到某符号时，是否可以选择对应的产生式，所以key为产生式，value为终结符的set
+     * @param grammer
+     * @return
+     */
+    @Override
+    public Map<List<String>, Set<String>> getSelectSet(Grammer grammer) {
+        Map<List<String>,Set<String>> select = new HashMap<>();
+        Map<String,Set<String>> first = this.getFirstSet(grammer);
+        Map<String,Set<String>> follow = this.getFollowSet(grammer);
+        Set<String> terminal = getTerminal(grammer);
+        Set<String> nonTerminal = getNonTerminal(grammer);
+
+        initSelect(select,first,follow,grammer);
+
+        return select;
     }
 
 //    private void initEmpty(Map<String,Boolean> empty,Set<String> terminal,Set<String> nonTerminal,Grammer grammer){
@@ -328,6 +383,18 @@ public class CompilerServiceImpl implements CompilerService {
 
     @Override
     public Boolean antlr(){
+        Lexer lexer;
+        try{
+            lexer = new Java8Lexer(CharStreams.fromFileName("C:\\Users\\1\\Desktop\\code\\compiler\\src\\main\\java\\com\\lxraa\\compiler\\CompilerApplication.java"));
+
+        }catch (IOException e){
+            return false;
+        }
+        CommonTokenStream tokens = new CommonTokenStream(lexer);
+        Java8Parser parser = new Java8Parser(tokens);
+        ParserRuleContext t = parser.compilationUnit();
+        System.out.println(t.toStringTree(parser));
+
         return true;
     }
 

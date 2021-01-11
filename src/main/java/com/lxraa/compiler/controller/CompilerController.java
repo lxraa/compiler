@@ -5,8 +5,6 @@ import com.lxraa.compiler.service.CompilerService;
 import com.lxraa.compiler.service.impl.CompilerServiceImpl;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.annotation.Secured;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -71,7 +69,7 @@ public class CompilerController {
         return new ResponseEntity<Object>(first,HttpStatus.OK);
     }
 
-    @PreAuthorize("hasAuthority('admin')")
+//    @PreAuthorize("hasAuthority('admin')")
     @GetMapping("/getFollow")
     public ResponseEntity<Object> getFollow(){
 //        Grammer grammer = new Grammer();
@@ -116,6 +114,37 @@ public class CompilerController {
 
         Map<String,Set<String>> follow = compilerService.getFollowSet(grammer2);
         return new ResponseEntity<Object>(follow,HttpStatus.OK);
+    }
+
+    @GetMapping("/getSelect")
+    public ResponseEntity<Object> getSelect(){
+        Grammer grammer = new Grammer();
+        grammer.setStart("A");
+        /**
+         * A→BCc | gDB
+         * B→bCDE | ε
+         * C→DaB | ca
+         * D→dD | ε
+         * E→gAf | c
+         */
+        //A→BCc | gDB
+        grammer.addSentence("A","BCc");
+        grammer.addSentence("A","gDB");
+        // B→bCDE | ε
+        grammer.addSentence("B","bCDE");
+        grammer.addSentence("B","ε");
+        // C→DaB | ca
+        grammer.addSentence("C","DaB");
+        grammer.addSentence("C","ca");
+        // D→dD | ε
+        grammer.addSentence("D","dD");
+        grammer.addSentence("D","ε");
+        // E→gAf | c
+        grammer.addSentence("E","gAf");
+        grammer.addSentence("E","c");
+
+        Map<List<String>,Set<String>> select = compilerService.getSelectSet(grammer);
+        return new ResponseEntity<>(select,HttpStatus.OK);
     }
 
 
